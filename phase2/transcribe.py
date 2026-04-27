@@ -3,6 +3,7 @@ Convert piano cover WAVs to MIDI using piano_transcription_inference.
 Requires GPU (run on JarvisLabs).
 """
 import sys
+import traceback
 from pathlib import Path
 
 
@@ -22,8 +23,9 @@ def transcribe_to_midi(piano_wav: Path, midi_dir: Path) -> Path | None:
     except ImportError:
         print("  [error] piano_transcription_inference not installed. Run: pip install piano-transcription-inference", file=sys.stderr)
         return None
-    except Exception as e:
-        print(f"  [error] Transcription failed for {piano_wav.name}: {e}", file=sys.stderr)
+    except Exception:
+        print(f"  [error] Transcription failed for {piano_wav.name}:", file=sys.stderr)
+        traceback.print_exc(file=sys.stderr)
         return None
 
     return out_path
