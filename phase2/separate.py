@@ -13,16 +13,22 @@ from pathlib import Path
 def _model_pairs(sep) -> list[tuple[str, str]]:
     """Return (friendly_name, actual_filename) pairs from the registry.
 
-    Registry structure: {category: {friendly_name: filename}} or {category: [filename, ...]}
-    load_model() needs the filename, but we search by friendly_name.
+    Registry structure: {category: {friendly_name: model_info_dict}}
+    where model_info_dict contains {'filename': 'actual.ckpt', ...}
+    load_model() needs the filename; we search by friendly_name.
     """
     registry = sep.list_supported_model_files()
     pairs = []
     for v in registry.values():
         if isinstance(v, dict):
-            pairs.extend(v.items())           # (friendly_name, filename)
+            for friendly, model_info in v.items():
+                if isinstance(model_info, dict):
+                    filename = model_info.get("filename", friendly)
+                else:
+                    filename = str(model_info)
+                pairs.append((friendly, filename))
         elif isinstance(v, list):
-            pairs.extend((n, n) for n in v)   # filename serves as both
+            pairs.extend((n, n) for n in v)
     return pairs
 
 
