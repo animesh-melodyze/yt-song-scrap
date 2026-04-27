@@ -11,6 +11,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from config import FFMPEG_LOCATION
+
 _SEARCH_SUFFIXES = [
     "official lyric video",
     "official audio",
@@ -112,6 +114,7 @@ def find_and_download_original(
         "-x",
         "--audio-format", "wav",
         "--audio-quality", "0",
+        "--ffmpeg-location", FFMPEG_LOCATION,
         "--no-warnings",
         "-o", str(output_dir / f"{slug}.%(ext)s"),
         yt_url,

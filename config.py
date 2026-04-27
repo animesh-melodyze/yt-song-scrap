@@ -21,6 +21,9 @@ GLOBAL_SONGS_CSV = DATA_DIR / "global_songs.csv"
 for _d in (PIANO_WAVS_DIR, ORIGINAL_WAVS_DIR, MIDI_DIR, SEPARATED_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
+# ffmpeg
+FFMPEG_LOCATION = str(Path.home() / "bin")
+
 # AWS S3
 S3_ACCESS_KEY_ID = os.getenv("S3_ACCESS_KEY_ID", "")
 S3_SECRET_ACCESS_KEY = os.getenv("S3_SECRET_ACCESS_KEY", "")

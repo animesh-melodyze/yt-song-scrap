@@ -6,6 +6,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from config import FFMPEG_LOCATION
+
 
 def download_piano_wav(yt_url: str, slug: str, output_dir: Path) -> Path:
     out_path = output_dir / f"{slug}.wav"
@@ -19,6 +21,7 @@ def download_piano_wav(yt_url: str, slug: str, output_dir: Path) -> Path:
         "-x",
         "--audio-format", "wav",
         "--audio-quality", "0",
+        "--ffmpeg-location", FFMPEG_LOCATION,
         "--no-warnings",
         "-o", str(output_dir / f"{slug}.%(ext)s"),
         yt_url,
