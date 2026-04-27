@@ -1,13 +1,29 @@
 """
 Split original song WAV into vocals and BGM using audio-separator (Mel-Band-Roformer).
 Requires GPU (run on JarvisLabs).
+
+Model name is resolved from the audio-separator registry at runtime to avoid
+hardcoding a name that may differ across package versions.
 """
 import sys
 import traceback
 from pathlib import Path
 
-# Mel-Band-Roformer vocal model filename in audio-separator's registry
-_MODEL = "MelBandRoformer.ckpt"
+
+def _find_model(sep) -> str:
+    """Return the first Mel-Band-Roformer vocal model name from the registry."""
+    models: dict = sep.list_supported_model_files()
+    # Prefer a vocals-specific Mel-Band-Roformer model
+    for name in models:
+        lower = name.lower()
+        if ("melband" in lower or "mel_band" in lower) and "vocal" in lower:
+            return name
+    # Fall back to any Mel-Band-Roformer model
+    for name in models:
+        if "melband" in name.lower() or "mel_band" in name.lower():
+            return name
+    available = ", ".join(list(models)[:10])
+    raise ValueError(f"No Mel-Band-Roformer model found in registry. First 10 available: {available}")
 
 
 def separate_vocals_bgm(original_wav: Path, separated_dir: Path) -> tuple[Path | None, Path | None]:
@@ -23,12 +39,13 @@ def separate_vocals_bgm(original_wav: Path, separated_dir: Path) -> tuple[Path |
     try:
         from audio_separator.separator import Separator
 
-        # model_name moved from __init__() to load_model() in audio-separator >=0.17
         sep = Separator(
             output_dir=str(separated_dir),
             output_format="wav",
         )
-        sep.load_model(model_filename=_MODEL)
+        model_name = _find_model(sep)
+        print(f"  Using model: {model_name}")
+        sep.load_model(model_filename=model_name)
         output_files = sep.separate(str(original_wav))
     except ImportError:
         print("  [error] audio-separator not installed. Run: pip install audio-separator[gpu]", file=sys.stderr)
@@ -38,8 +55,6 @@ def separate_vocals_bgm(original_wav: Path, separated_dir: Path) -> tuple[Path |
         traceback.print_exc(file=sys.stderr)
         return None, None
 
-    # audio-separator names outputs like "<slug>_(Vocals)_<model>.wav"
-    # Rename to our convention
     found_vocals, found_bgm = None, None
     for f in output_files:
         fp = Path(f)
