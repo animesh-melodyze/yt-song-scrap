@@ -1,0 +1,26 @@
+[project]
+name = "yt-song-scrap"
+version = "0.1.0"
+description = "Scrape sing2piano covers, extract audio/MIDI, separate vocals, upload to S3"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "pandas>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "soundfile>=0.12.0",
+]
+
+[dependency-groups]
+phase1 = [
+    "yt-dlp>=2024.1.0",
+    "librosa>=0.10.0",
+]
+phase2 = [
+    "piano-transcription-inference>=0.0.6",
+    "audio-separator[gpu]>=0.17.0",
+    "torch>=2.0.0",
+    "torchaudio>=2.0.0",
+    "boto3>=1.34.0",
+]
+
+[tool.uv]
+package = false

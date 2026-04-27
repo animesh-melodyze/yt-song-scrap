@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# uv / venv
+.venv/
+
+# Credentials
+.env
+
+# Audio & MIDI outputs (large binary files)
+data/piano_wavs/
+data/original_wavs/
+data/midi/
+data/separated/
+data/metadata_txts/
+
+# Keep the master CSV (processing state)
+!data/songs.csv
+
+# macOS
+.DS_Store
