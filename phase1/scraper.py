@@ -1,12 +1,11 @@
 """
-Fetch all videos from @sing2piano, sort by view count descending.
+Fetch all videos from a YouTube channel, parse titles via LLM, sort by view count descending.
 Deduplicates by song+artist slug so a song covered twice only counts once.
 Pass top_n=None to return the entire channel.
 """
 import re
 import subprocess
 import sys
-from typing import Optional
 
 
 def _slugify(text: str) -> str:
@@ -16,24 +15,10 @@ def _slugify(text: str) -> str:
     return text
 
 
-def _parse_title(title: str) -> tuple[Optional[str], Optional[str]]:
-    """Extract (song_name, artist) from titles like 'Perfect - Ed Sheeran | Piano Cover'."""
-    patterns = [
-        r"^(.+?)\s*[-–]\s*(.+?)\s*[|\(]",   # Song - Artist | ...  or Song - Artist (...)
-        r"^(.+?)\s*[-–]\s*(.+?)$",            # Song - Artist
-    ]
-    for pat in patterns:
-        m = re.match(pat, title, re.IGNORECASE)
-        if m:
-            song = m.group(1).strip()
-            artist = m.group(2).strip()
-            # Filter out common noise words that end up as "artist"
-            if len(artist) > 1 and not re.match(r"^(piano|cover|tutorial|sheet)$", artist, re.I):
-                return song, artist
-    return None, None
-
-
 def fetch_top_songs(channel_url: str, top_n: int | None = 100) -> list[dict]:
+    from config import LLM_MODEL
+    from phase1.title_parser import parse_titles
+
     print(f"Fetching video list from {channel_url} …")
     cmd = [
         "yt-dlp",
@@ -47,43 +32,65 @@ def fetch_top_songs(channel_url: str, top_n: int | None = 100) -> list[dict]:
         print(f"yt-dlp error:\n{result.stderr}", file=sys.stderr)
         raise RuntimeError("Failed to fetch playlist")
 
-    rows = []
-    seen_slugs: set[str] = set()
-
+    # Collect raw rows first
+    raw_rows = []
     for line in result.stdout.strip().splitlines():
         parts = line.split("\t")
         if len(parts) < 5:
             continue
-        vid_id, title, view_str, duration_str, url = parts[:5]
-
+        vid_id, title, view_str, *_, url = parts[:5]
         try:
             views = int(view_str)
         except ValueError:
             views = 0
+        raw_rows.append({
+            "yt_video_id": vid_id,
+            "raw_title": title,
+            "view_count": views,
+            "yt_piano_url": url,
+        })
 
-        song_name, artist = _parse_title(title)
+    print(f"Fetched {len(raw_rows)} videos. Parsing titles with LLM ({LLM_MODEL}) …")
+    parsed = parse_titles([r["raw_title"] for r in raw_rows], model=LLM_MODEL)
+
+    rows = []
+    seen_slugs: set[str] = set()
+
+    for raw, meta in zip(raw_rows, parsed):
+        if not meta:
+            continue
+        song_name = (meta.get("song_name") or "").strip()
+        artist = (meta.get("artist") or "").strip()
         if not song_name or not artist:
             continue
+        if meta.get("confidence") == "low":
+            continue  # skip uncertain results
 
         slug = _slugify(f"{song_name}_{artist}")
         if slug in seen_slugs:
-            continue  # deduplicate covers of the same song
+            continue
         seen_slugs.add(slug)
 
         rows.append({
             "slug": slug,
             "song_name": song_name,
             "artist": artist,
-            "yt_piano_url": url,
-            "yt_video_id": vid_id,
-            "view_count": views,
-            "raw_title": title,
+            "is_cover": meta.get("is_cover", True),
+            "genre": meta.get("genre"),
+            "llm_key": meta.get("key"),
+            "llm_scale": meta.get("scale"),
+            "llm_tempo_bpm": meta.get("tempo_bpm"),
+            "llm_time_signature": meta.get("time_signature"),
+            "yt_piano_url": raw["yt_piano_url"],
+            "yt_video_id": raw["yt_video_id"],
+            "view_count": raw["view_count"],
+            "raw_title": raw["raw_title"],
         })
 
     rows.sort(key=lambda r: r["view_count"], reverse=True)
     top = rows if top_n is None else rows[:top_n]
     label = "all" if top_n is None else f"top {len(top)}"
-    print(f"Found {len(rows)} unique songs, returning {label} sorted by view count (desc).")
+    print(f"Parsed {len(rows)} unique songs, returning {label} sorted by view count (desc).")
     return top
 
 

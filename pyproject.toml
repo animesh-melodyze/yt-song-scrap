@@ -13,6 +13,7 @@ dependencies = [
 phase1 = [
     "yt-dlp>=2024.1.0",
     "librosa>=0.10.0",
+    "openai>=1.30.0",
 ]
 phase2 = [
     "piano-transcription-inference>=0.0.6",

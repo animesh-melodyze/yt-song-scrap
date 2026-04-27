@@ -58,7 +58,7 @@ def load_or_init_songs_csv(global_df: pd.DataFrame) -> pd.DataFrame:
         return df
 
     df = global_df.copy()
-    for col in ("yt_original_url", "tempo_bpm", "key", "duration_s",
+    for col in ("yt_original_url", "librosa_tempo_bpm", "librosa_key", "duration_s",
                 "piano_wav", "original_wav", "phase1_done", "phase2_done"):
         df[col] = None
     df["phase1_done"] = False
@@ -89,13 +89,13 @@ def process_song(row: pd.Series) -> dict:
     if orig_path:
         updates["original_wav"] = str(orig_path)
 
-    # 3. Detect tempo + key from original (fall back to piano cover)
+    # 3. Detect tempo + key from audio (stored separately from LLM values)
     analysis_path = orig_path or piano_path
     if analysis_path and Path(str(analysis_path)).exists():
         try:
             bpm, key = detect_tempo_and_key(Path(str(analysis_path)))
-            updates["tempo_bpm"] = bpm
-            updates["key"] = key
+            updates["librosa_tempo_bpm"] = bpm
+            updates["librosa_key"] = key
             updates["duration_s"] = get_duration(Path(str(analysis_path)))
         except Exception as e:
             print(f"  [warn] Audio analysis failed for {slug}: {e}", file=sys.stderr)

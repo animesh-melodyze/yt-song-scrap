@@ -21,6 +21,10 @@ GLOBAL_SONGS_CSV = DATA_DIR / "global_songs.csv"
 for _d in (PIANO_WAVS_DIR, ORIGINAL_WAVS_DIR, MIDI_DIR, SEPARATED_DIR):
     _d.mkdir(parents=True, exist_ok=True)
 
+# LLM (title parsing)
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4.1-nano")
+
 # ffmpeg
 FFMPEG_LOCATION = str(Path.home() / "bin")
 

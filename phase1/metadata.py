@@ -39,18 +39,29 @@ def detect_tempo_and_key(wav_path: Path) -> tuple[float, str]:
     return round(bpm, 1), best_key
 
 
-def write_metadata_txt(
-    song: dict,
-    output_path: Path,
-) -> None:
+def write_metadata_txt(song: dict, output_path: Path) -> None:
+    def _v(key: str) -> str:
+        v = song.get(key)
+        return str(v) if v is not None and str(v).strip() not in ("", "nan", "None") else ""
+
+    # Key: prefer LLM (knows original song), fall back to librosa
+    llm_key = _v("llm_key")
+    llm_scale = _v("llm_scale")
+    key_str = f"{llm_key} {llm_scale}".strip() if llm_key else _v("librosa_key")
+
+    # Tempo: prefer librosa (measured from actual audio), fall back to LLM reference
+    tempo_str = _v("librosa_tempo_bpm") or _v("llm_tempo_bpm")
+
     lines = [
-        f"Song Name: {song.get('song_name', '')}",
-        f"Artist: {song.get('artist', '')}",
-        f"Tempo (BPM): {song.get('tempo_bpm', '')}",
-        f"Key: {song.get('key', '')}",
-        f"Duration (s): {song.get('duration_s', '')}",
-        f"YouTube Piano Cover: {song.get('yt_piano_url', '')}",
-        f"YouTube Original: {song.get('yt_original_url', '')}",
+        f"Song Name: {_v('song_name')}",
+        f"Artist: {_v('artist')}",
+        f"Genre: {_v('genre')}",
+        f"Key: {key_str}",
+        f"Time Signature: {_v('llm_time_signature')}",
+        f"Tempo (BPM): {tempo_str}",
+        f"Duration (s): {_v('duration_s')}",
+        f"YouTube Piano Cover: {_v('yt_piano_url')}",
+        f"YouTube Original: {_v('yt_original_url')}",
     ]
     output_path.write_text("\n".join(lines) + "\n")
 
