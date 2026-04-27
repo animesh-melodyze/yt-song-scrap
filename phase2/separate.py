@@ -10,20 +10,37 @@ import traceback
 from pathlib import Path
 
 
+def _all_model_names(sep) -> list[str]:
+    """Flatten the nested {category: [model, ...]} registry into a flat list."""
+    registry = sep.list_supported_model_files()
+    names = []
+    for v in registry.values():
+        if isinstance(v, list):
+            names.extend(v)
+        elif isinstance(v, dict):
+            names.extend(v.keys())
+    return names
+
+
 def _find_model(sep) -> str:
-    """Return the first Mel-Band-Roformer vocal model name from the registry."""
-    models: dict = sep.list_supported_model_files()
-    # Prefer a vocals-specific Mel-Band-Roformer model
-    for name in models:
+    """Return the best vocal separation model available in the registry."""
+    names = _all_model_names(sep)
+
+    # Prefer Mel-Band-Roformer vocal model
+    for name in names:
         lower = name.lower()
-        if ("melband" in lower or "mel_band" in lower) and "vocal" in lower:
+        if ("melband" in lower or "mel_band" in lower or "roformer" in lower) and "vocal" in lower:
             return name
-    # Fall back to any Mel-Band-Roformer model
-    for name in models:
-        if "melband" in name.lower() or "mel_band" in name.lower():
+    # Any Roformer
+    for name in names:
+        if "roformer" in name.lower():
             return name
-    available = ", ".join(list(models)[:10])
-    raise ValueError(f"No Mel-Band-Roformer model found in registry. First 10 available: {available}")
+    # Fall back to a known-good MDX vocal model
+    for name in names:
+        if "vocal" in name.lower():
+            return name
+
+    raise ValueError(f"No vocal model found. All available models: {names}")
 
 
 def separate_vocals_bgm(original_wav: Path, separated_dir: Path) -> tuple[Path | None, Path | None]:
