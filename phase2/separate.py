@@ -85,12 +85,13 @@ def separate_vocals_bgm(original_wav: Path, separated_dir: Path) -> tuple[Path |
 
     found_vocals, found_bgm = None, None
     for f in output_files:
-        fp = Path(f)
+        # output_files may be bare filenames — resolve against separated_dir
+        fp = Path(f) if Path(f).is_absolute() else separated_dir / f
         lower = fp.name.lower()
-        if "vocals" in lower or "(vocals)" in lower:
+        if "(vocals)" in lower:
             fp.rename(vocals_path)
             found_vocals = vocals_path
-        elif "instrumental" in lower or "no vocals" in lower or "bgm" in lower:
+        elif "(other)" in lower or "(instrumental)" in lower or "(no vocals)" in lower:
             fp.rename(bgm_path)
             found_bgm = bgm_path
 
