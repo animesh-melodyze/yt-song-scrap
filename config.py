@@ -16,6 +16,7 @@ ORIGINAL_WAVS_DIR = DATA_DIR / "original_wavs"
 MIDI_DIR = DATA_DIR / "midi"
 SEPARATED_DIR = DATA_DIR / "separated"
 SONGS_CSV = DATA_DIR / "songs.csv"
+GLOBAL_SONGS_CSV = DATA_DIR / "global_songs.csv"
 
 for _d in (PIANO_WAVS_DIR, ORIGINAL_WAVS_DIR, MIDI_DIR, SEPARATED_DIR):
     _d.mkdir(parents=True, exist_ok=True)

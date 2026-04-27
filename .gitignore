@@ -19,7 +19,8 @@ data/midi/
 data/separated/
 data/metadata_txts/
 
-# Keep the master CSV (processing state)
+# Keep the curated global sheet and master processing state
+!data/global_songs.csv
 !data/songs.csv
 
 # macOS
