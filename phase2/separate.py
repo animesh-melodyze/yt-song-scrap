@@ -10,37 +10,42 @@ import traceback
 from pathlib import Path
 
 
-def _all_model_names(sep) -> list[str]:
-    """Flatten the nested {category: [model, ...]} registry into a flat list."""
+def _model_pairs(sep) -> list[tuple[str, str]]:
+    """Return (friendly_name, actual_filename) pairs from the registry.
+
+    Registry structure: {category: {friendly_name: filename}} or {category: [filename, ...]}
+    load_model() needs the filename, but we search by friendly_name.
+    """
     registry = sep.list_supported_model_files()
-    names = []
+    pairs = []
     for v in registry.values():
-        if isinstance(v, list):
-            names.extend(v)
-        elif isinstance(v, dict):
-            names.extend(v.keys())
-    return names
+        if isinstance(v, dict):
+            pairs.extend(v.items())           # (friendly_name, filename)
+        elif isinstance(v, list):
+            pairs.extend((n, n) for n in v)   # filename serves as both
+    return pairs
 
 
 def _find_model(sep) -> str:
-    """Return the best vocal separation model available in the registry."""
-    names = _all_model_names(sep)
+    """Return the actual filename of the best vocal separation model."""
+    pairs = _model_pairs(sep)
 
-    # Prefer Mel-Band-Roformer vocal model
-    for name in names:
-        lower = name.lower()
+    # Prefer Mel-Band-Roformer vocal model (match on friendly name)
+    for friendly, filename in pairs:
+        lower = friendly.lower()
         if ("melband" in lower or "mel_band" in lower or "roformer" in lower) and "vocal" in lower:
-            return name
+            return filename
     # Any Roformer
-    for name in names:
-        if "roformer" in name.lower():
-            return name
-    # Fall back to a known-good MDX vocal model
-    for name in names:
-        if "vocal" in name.lower():
-            return name
+    for friendly, filename in pairs:
+        if "roformer" in friendly.lower():
+            return filename
+    # Fall back to any vocal model
+    for friendly, filename in pairs:
+        if "vocal" in friendly.lower():
+            return filename
 
-    raise ValueError(f"No vocal model found. All available models: {names}")
+    all_friendly = [f for f, _ in pairs]
+    raise ValueError(f"No vocal model found. Available: {all_friendly}")
 
 
 def separate_vocals_bgm(original_wav: Path, separated_dir: Path) -> tuple[Path | None, Path | None]:

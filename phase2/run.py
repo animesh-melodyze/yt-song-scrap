@@ -38,6 +38,12 @@ def main(limit: int | None = None):
     if "phase2_done" not in df.columns:
         df["phase2_done"] = False
 
+    # Ensure S3 URL columns exist as object dtype so string URLs can be stored
+    for col in ("s3_piano_wav", "s3_midi", "s3_vocals", "s3_bgm"):
+        if col not in df.columns:
+            df[col] = None
+        df[col] = df[col].astype(object)
+
     pending = df[(df["phase1_done"] == True) & (df["phase2_done"] != True)]
     if limit:
         pending = pending.head(limit)
