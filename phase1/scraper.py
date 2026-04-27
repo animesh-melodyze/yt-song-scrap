@@ -1,9 +1,9 @@
 """
-Fetch all videos from @sing2piano, sort by view count, return top N.
+Fetch all videos from @sing2piano, sort by view count descending.
 Deduplicates by song+artist slug so a song covered twice only counts once.
+Pass top_n=None to return the entire channel.
 """
 import re
-import json
 import subprocess
 import sys
 from typing import Optional
@@ -33,7 +33,7 @@ def _parse_title(title: str) -> tuple[Optional[str], Optional[str]]:
     return None, None
 
 
-def fetch_top_songs(channel_url: str, top_n: int = 100) -> list[dict]:
+def fetch_top_songs(channel_url: str, top_n: int | None = 100) -> list[dict]:
     print(f"Fetching video list from {channel_url} …")
     cmd = [
         "yt-dlp",
@@ -81,8 +81,9 @@ def fetch_top_songs(channel_url: str, top_n: int = 100) -> list[dict]:
         })
 
     rows.sort(key=lambda r: r["view_count"], reverse=True)
-    top = rows[:top_n]
-    print(f"Found {len(rows)} unique songs, keeping top {len(top)} by view count.")
+    top = rows if top_n is None else rows[:top_n]
+    label = "all" if top_n is None else f"top {len(top)}"
+    print(f"Found {len(rows)} unique songs, returning {label} sorted by view count (desc).")
     return top
 
 
