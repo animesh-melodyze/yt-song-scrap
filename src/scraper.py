@@ -17,14 +17,15 @@ def _slugify(text: str) -> str:
 
 def fetch_channel_songs(channel_url: str, top_n: int | None = None) -> list[dict]:
     print(f"Fetching video list from {channel_url} …")
+    print("(This may take a few minutes for large channels — one-time operation)")
     cmd = [
         "yt-dlp",
-        "--flat-playlist",
+        "--no-download",
         "--print", "%(id)s\t%(title)s\t%(view_count)s\t%(webpage_url)s",
         "--no-warnings",
         channel_url,
     ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     if result.returncode != 0:
         print(f"yt-dlp error:\n{result.stderr}", file=sys.stderr)
         raise RuntimeError("Failed to fetch playlist")
@@ -37,7 +38,7 @@ def fetch_channel_songs(channel_url: str, top_n: int | None = None) -> list[dict
         vid_id, title, view_str, url = parts[:4]
         try:
             views = int(view_str)
-        except ValueError:
+        except (ValueError, TypeError):
             views = 0
 
         slug = _slugify(title)
