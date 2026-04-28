@@ -48,6 +48,20 @@ def _load_global_sheet() -> pd.DataFrame:
     return pd.read_csv(GLOBAL_SONGS_CSV).sort_values("rank").reset_index(drop=True)
 
 
+_STRING_COLS = [
+    "slug", "raw_title", "yt_piano_url", "yt_video_id",
+    "song_name", "artist", "genre", "llm_key", "llm_scale",
+    "llm_time_signature", "yt_original_url", "s3_url", "librosa_key",
+]
+
+
+def _cast_dtypes(df: pd.DataFrame) -> pd.DataFrame:
+    for col in _STRING_COLS:
+        if col in df.columns:
+            df[col] = df[col].astype(object)
+    return df
+
+
 def _load_or_init_songs_csv(global_df: pd.DataFrame) -> pd.DataFrame:
     state_cols = ["yt_original_url", "librosa_tempo_bpm", "librosa_key",
                   "duration_s", "s3_url", "done"]
@@ -58,7 +72,6 @@ def _load_or_init_songs_csv(global_df: pd.DataFrame) -> pd.DataFrame:
             if col not in df.columns:
                 df[col] = None
         df["done"] = df["done"].fillna(False)
-        # Merge any new slugs from global sheet
         new_rows = global_df[~global_df["slug"].isin(set(df["slug"]))].copy()
         if not new_rows.empty:
             for col in df.columns:
@@ -66,21 +79,18 @@ def _load_or_init_songs_csv(global_df: pd.DataFrame) -> pd.DataFrame:
                     new_rows[col] = None
             new_rows["done"] = False
             df = pd.concat([df, new_rows], ignore_index=True)
-        return df
+        return _cast_dtypes(df)
 
     df = global_df.copy()
     for col in state_cols:
         df[col] = None
     df["done"] = False
     df.to_csv(SONGS_CSV, index=False)
-    return df
+    return _cast_dtypes(df)
 
 
 def _save(df: pd.DataFrame) -> None:
-    # Ensure S3 URL columns are object dtype before saving
-    for col in ("s3_url",):
-        if col in df.columns:
-            df[col] = df[col].astype(object)
+    _cast_dtypes(df)
     df.to_csv(SONGS_CSV, index=False)
 
 
