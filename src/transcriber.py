@@ -1,22 +1,17 @@
-"""
-Convert piano cover WAVs to MIDI using piano_transcription_inference.
-Requires GPU (run on JarvisLabs).
-
-Loads audio via soundfile + torchaudio instead of piano_transcription_inference's
-own load_audio(), which breaks on librosa >= 0.10.
-"""
+"""Piano cover WAV → MIDI using piano_transcription_inference."""
 import sys
 import traceback
 from pathlib import Path
 
 
-def transcribe_to_midi(piano_wav: Path, midi_dir: Path) -> Path | None:
-    out_path = midi_dir / f"{piano_wav.stem}.mid"
+def transcribe_to_midi(piano_wav: Path, song_dir: Path) -> Path | None:
+    slug = piano_wav.stem.replace("_piano", "")
+    out_path = song_dir / f"{slug}_piano.mid"
     if out_path.exists():
         print(f"  [skip] {out_path.name} already exists")
         return out_path
 
-    print(f"  Transcribing {piano_wav.name} → MIDI …")
+    print(f"  Transcribing piano WAV → MIDI …")
     try:
         import librosa
         from piano_transcription_inference import PianoTranscription, sample_rate
@@ -28,7 +23,7 @@ def transcribe_to_midi(piano_wav: Path, midi_dir: Path) -> Path | None:
         print("  [error] piano_transcription_inference not installed.", file=sys.stderr)
         return None
     except Exception:
-        print(f"  [error] Transcription failed for {piano_wav.name}:", file=sys.stderr)
+        print(f"  [error] Transcription failed:", file=sys.stderr)
         traceback.print_exc(file=sys.stderr)
         return None
 

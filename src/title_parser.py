@@ -1,12 +1,6 @@
 """
-LLM subagent: send raw YouTube video titles to GPT, get back structured metadata.
-Processes titles in batches of 50 (one API call per batch) to keep cost low.
-
-Returned fields per title:
-  song_name  – cleaned song title
-  artist     – original artist name
-  is_cover   – whether this is a cover of an existing song
-  confidence – "high" | "medium" | "low"
+LLM subagent: batch-parse YouTube video titles into structured song metadata.
+One API call per 50 titles — works for any channel title format.
 """
 import json
 import sys
@@ -31,13 +25,12 @@ Each entry must have:
   "time_signature" : e.g. "4/4", "3/4", "6/8" (string, or null)
 
 Rules:
-- Strip channel-specific suffixes like "Piano Cover", "Piano Tutorial", "Sheet Music", "Lyrics", etc.
-- If the title format is "Song - Artist", extract accordingly.
-- If the format is "Artist - Song", detect and swap correctly.
+- Strip suffixes like "Piano Cover", "Piano Tutorial", "Sheet Music", "Lyrics", etc.
+- Detect title format (Song - Artist vs Artist - Song) and extract correctly.
 - Never include instrument type or cover/tutorial labels in song_name or artist.
-- For music theory fields (key, scale, tempo_bpm, time_signature) use your training knowledge
-  about the original song. If genuinely unknown, use null — do not guess randomly.
-- If truly ambiguous about the song itself, set confidence "low" and your best guess.
+- For music theory fields use your training knowledge about the original song.
+  If genuinely unknown, use null — do not guess randomly.
+- If truly ambiguous about the song itself, set confidence "low".
 """
 
 
@@ -45,56 +38,44 @@ def _get_client():
     try:
         from openai import OpenAI
     except ImportError:
-        print("[error] openai not installed. Run: uv sync --group phase1", file=sys.stderr)
+        print("[error] openai not installed. Run: uv sync --group gpu", file=sys.stderr)
         raise
-
     from config import OPENAI_API_KEY
     return OpenAI(api_key=OPENAI_API_KEY)
 
 
 def _parse_batch(client, titles: list[str], model: str) -> list[dict]:
     numbered = "\n".join(f'{i + 1}. "{t}"' for i, t in enumerate(titles))
-    user_msg = f"Parse these {len(titles)} video titles:\n\n{numbered}"
-
     response = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": user_msg},
+            {"role": "user", "content": f"Parse these {len(titles)} video titles:\n\n{numbered}"},
         ],
         response_format={"type": "json_object"},
         temperature=0,
     )
-
     raw = json.loads(response.choices[0].message.content)
-    # Normalise: handle {"results": [...]} or {"titles": [...]} or bare [...]
     if isinstance(raw, list):
         return raw
     for key in ("results", "titles", "data", "items"):
         if key in raw and isinstance(raw[key], list):
             return raw[key]
-    # Last resort: if it's a dict of index→entry
     return list(raw.values())
 
 
 def parse_titles(titles: list[str], model: str = "gpt-4.1-nano") -> list[dict | None]:
-    """
-    Parse all titles via LLM in batches.
-    Returns a list (same length as titles) of dicts or None on failure.
-    """
+    """Parse all titles in batches. Returns list of same length as titles."""
     client = _get_client()
     results: list[dict | None] = []
-
     for start in range(0, len(titles), BATCH_SIZE):
         batch = titles[start: start + BATCH_SIZE]
         print(f"  [LLM] Parsing titles {start + 1}–{start + len(batch)} of {len(titles)} …")
         try:
             batch_results = _parse_batch(client, batch, model)
-            # Pad/trim to match batch length in case LLM returns wrong count
             batch_results = (batch_results + [None] * len(batch))[: len(batch)]
             results.extend(batch_results)
         except Exception as e:
             print(f"  [warn] LLM batch failed: {e}", file=sys.stderr)
             results.extend([None] * len(batch))
-
     return results

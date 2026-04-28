@@ -5,28 +5,23 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Channel
-CHANNEL_URL = "https://www.youtube.com/@sing2piano/videos"
-TOP_N = 100
+CHANNEL_URL = os.getenv("CHANNEL_URL", "")
+TOP_N = int(os.getenv("TOP_N", "100"))
 
 # Paths
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
-PIANO_WAVS_DIR = DATA_DIR / "piano_wavs"
-ORIGINAL_WAVS_DIR = DATA_DIR / "original_wavs"
-MIDI_DIR = DATA_DIR / "midi"
-SEPARATED_DIR = DATA_DIR / "separated"
 SONGS_CSV = DATA_DIR / "songs.csv"
 GLOBAL_SONGS_CSV = DATA_DIR / "global_songs.csv"
 
-for _d in (PIANO_WAVS_DIR, ORIGINAL_WAVS_DIR, MIDI_DIR, SEPARATED_DIR):
-    _d.mkdir(parents=True, exist_ok=True)
+DATA_DIR.mkdir(exist_ok=True)
 
-# LLM (title parsing)
+# ffmpeg (system install path)
+FFMPEG_LOCATION = os.getenv("FFMPEG_LOCATION", str(Path.home() / "bin"))
+
+# LLM
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4.1-nano")
-
-# ffmpeg
-FFMPEG_LOCATION = str(Path.home() / "bin")
 
 # AWS S3
 S3_ACCESS_KEY_ID = os.getenv("S3_ACCESS_KEY_ID", "")
