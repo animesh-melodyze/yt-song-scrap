@@ -202,7 +202,13 @@ def main(skip: int = 0, limit: int | None = None) -> None:
             continue
 
         for k, v in updates.items():
-            songs_df.at[idx, k] = v
+            if k not in songs_df.columns:
+                songs_df[k] = pd.array([None] * len(songs_df), dtype=object)
+            try:
+                songs_df.at[idx, k] = v
+            except (TypeError, ValueError):
+                songs_df[k] = songs_df[k].astype(object)
+                songs_df.at[idx, k] = v
         _save(songs_df)
         status = "✓" if updates.get("done") else "✗ partial"
         print(f"  → {status}\n")
