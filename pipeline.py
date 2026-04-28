@@ -180,7 +180,7 @@ def main(skip: int = 0, limit: int | None = None) -> None:
     for idx, row in pending.iterrows():
         rank = global_df.loc[global_df["slug"] == row["slug"], "rank"].values
         rank_str = str(int(rank[0])) if len(rank) else "?"
-        print(f"[rank {rank_str}/{len(global_df)}] {row['song_name']} — {row['artist']}")
+        print(f"[rank {rank_str}/{len(global_df)}] {row['raw_title']}")
         try:
             updates = process_song(row)
         except Exception as e:
