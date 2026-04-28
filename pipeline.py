@@ -104,7 +104,8 @@ def process_song(row: pd.Series) -> dict:
     from config import LLM_MODEL
 
     slug = row["slug"]
-    song_dir = DATA_DIR / slug
+    ranked_slug = f"{int(row['rank'])}_{slug}"
+    song_dir = DATA_DIR / ranked_slug
     song_dir.mkdir(parents=True, exist_ok=True)
     updates = {}
 
@@ -163,7 +164,7 @@ def process_song(row: pd.Series) -> dict:
         vocals, bgm = separate_vocals_bgm(orig_wav, song_dir)
 
     # 7. Zip + upload + cleanup
-    s3_url = upload_and_cleanup(slug, song_dir, S3_BUCKET_NAME)
+    s3_url = upload_and_cleanup(ranked_slug, song_dir, S3_BUCKET_NAME)
     if s3_url:
         updates["s3_url"] = s3_url
 
