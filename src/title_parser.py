@@ -64,8 +64,14 @@ def _parse_batch(client, titles: list[str], model: str) -> list[dict]:
     return list(raw.values())
 
 
+def parse_title(title: str, model: str = "gpt-4.1-nano") -> dict | None:
+    """Parse a single video title. Called per-song during pipeline processing."""
+    results = parse_titles([title], model=model)
+    return results[0] if results else None
+
+
 def parse_titles(titles: list[str], model: str = "gpt-4.1-nano") -> list[dict | None]:
-    """Parse all titles in batches. Returns list of same length as titles."""
+    """Parse a list of titles in batches. Returns list of same length as input."""
     client = _get_client()
     results: list[dict | None] = []
     for start in range(0, len(titles), BATCH_SIZE):

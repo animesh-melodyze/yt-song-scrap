@@ -26,6 +26,7 @@ import pandas as pd
 from config import (
     CHANNEL_URL, DATA_DIR, SONGS_CSV, GLOBAL_SONGS_CSV, S3_BUCKET_NAME
 )
+from src.title_parser import parse_title
 from src.downloader import download_piano_wav
 from src.finder import find_and_download_original
 from src.metadata import analyse_audio, write_metadata_txt
@@ -86,22 +87,43 @@ def _save(df: pd.DataFrame) -> None:
 # ── per-song processing ───────────────────────────────────────────────────────
 
 def process_song(row: pd.Series) -> dict:
+    from config import LLM_MODEL
+
     slug = row["slug"]
     song_dir = DATA_DIR / slug
     song_dir.mkdir(parents=True, exist_ok=True)
     updates = {}
 
-    # 1. Piano cover
+    # 1. LLM: parse title → song metadata (only for this one song)
+    print(f"  [LLM] Parsing title …")
+    meta = parse_title(row["raw_title"], model=LLM_MODEL) or {}
+    song_name = (meta.get("song_name") or "").strip()
+    artist = (meta.get("artist") or "").strip()
+    if not song_name or not artist:
+        print(f"  [error] LLM could not extract song/artist from: {row['raw_title']!r}", file=sys.stderr)
+        return {"done": False}
+
+    updates.update({
+        "song_name": song_name,
+        "artist": artist,
+        "genre": meta.get("genre"),
+        "llm_key": meta.get("key"),
+        "llm_scale": meta.get("scale"),
+        "llm_tempo_bpm": meta.get("tempo_bpm"),
+        "llm_time_signature": meta.get("time_signature"),
+    })
+
+    # 2. Piano cover
     piano_wav = download_piano_wav(row["yt_piano_url"], slug, song_dir)
 
-    # 2. Original song
+    # 3. Original song
     yt_orig_url, orig_wav = find_and_download_original(
-        row["song_name"], row["artist"], slug, song_dir
+        song_name, artist, slug, song_dir
     )
     if yt_orig_url:
         updates["yt_original_url"] = yt_orig_url
 
-    # 3. Audio analysis (from original, fall back to piano)
+    # 4. Audio analysis (from original, fall back to piano)
     analysis_src = orig_wav or piano_wav
     if analysis_src and analysis_src.exists():
         try:
@@ -110,18 +132,18 @@ def process_song(row: pd.Series) -> dict:
         except Exception as e:
             print(f"  [warn] Audio analysis failed: {e}", file=sys.stderr)
 
-    # 4. Metadata txt
+    # 5. Metadata txt
     write_metadata_txt(
         {**row.to_dict(), **updates, "yt_original_url": yt_orig_url},
         song_dir / f"{slug}_metadata.txt",
     )
 
-    # 5. MIDI transcription
+    # 6. MIDI transcription
     midi = None
     if piano_wav and piano_wav.exists():
         midi = transcribe_to_midi(piano_wav, song_dir)
 
-    # 6. Vocal / BGM separation
+    # 7. Vocal / BGM separation
     vocals, bgm = None, None
     if orig_wav and orig_wav.exists():
         vocals, bgm = separate_vocals_bgm(orig_wav, song_dir)

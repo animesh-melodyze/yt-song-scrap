@@ -34,9 +34,7 @@ def main(force: bool = False) -> None:
 
     df = pd.DataFrame(songs)
     df.insert(0, "rank", range(1, len(df) + 1))
-    cols = ["rank", "slug", "song_name", "artist", "genre",
-            "llm_key", "llm_scale", "llm_tempo_bpm", "llm_time_signature",
-            "yt_piano_url", "view_count", "raw_title"]
+    cols = ["rank", "slug", "raw_title", "yt_piano_url", "view_count"]
     df = df[[c for c in cols if c in df.columns]]
 
     GLOBAL_SONGS_CSV.parent.mkdir(parents=True, exist_ok=True)
