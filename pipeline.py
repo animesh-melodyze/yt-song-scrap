@@ -63,12 +63,16 @@ def _cast_dtypes(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _load_or_init_songs_csv(global_df: pd.DataFrame) -> pd.DataFrame:
-    state_cols = ["yt_original_url", "librosa_tempo_bpm", "librosa_key",
-                  "duration_s", "s3_url", "done"]
+    all_output_cols = [
+        "song_name", "artist", "genre", "llm_key", "llm_scale",
+        "llm_tempo_bpm", "llm_time_signature",
+        "yt_original_url", "librosa_tempo_bpm", "librosa_key",
+        "duration_s", "s3_url", "done",
+    ]
 
     if SONGS_CSV.exists():
         df = pd.read_csv(SONGS_CSV)
-        for col in state_cols:
+        for col in all_output_cols:
             if col not in df.columns:
                 df[col] = None
         df["done"] = df["done"].fillna(False)
@@ -82,7 +86,7 @@ def _load_or_init_songs_csv(global_df: pd.DataFrame) -> pd.DataFrame:
         return _cast_dtypes(df)
 
     df = global_df.copy()
-    for col in state_cols:
+    for col in all_output_cols:
         df[col] = None
     df["done"] = False
     df.to_csv(SONGS_CSV, index=False)
